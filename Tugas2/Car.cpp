@@ -1,6 +1,7 @@
 // Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 // Include GLEW
 #include <GL/glew.h>
 // Include GLFW
@@ -9,68 +10,103 @@
 #include <glm/glm.hpp>
 using namespace std;
 using namespace glm;
+
+#include <common/shader.hpp>
 GLFWwindow* window;
 GLuint programID;
+GLuint wheelID;
 GLint positionHandle;
 GLint colorHandle;
 
-const GLchar *vs_source = R"glsl(
-#version 120
-attribute vec2 position;
-attribute vec3 color;
-varying vec3 vColor;
-void main(void) { 
-	vColor = color;
-	gl_Position = vec4(position, 0.0, 1.0); 
+#define SCREEN_WIDTH 1000
+#define SCREEN_HEIGHT 1000
+
+// const GLchar *vs_source ="glsl(
+// #version 330 core
+// attribute vec2 position;
+// attribute vec3 color;
+// varying vec3 vColor;
+// void main(void) { 
+// 	vColor = color;
+// 	gl_Position = vec4(position, 0.0, 1.0); 
+// }
+// )glsl";
+
+// const char *fs_source =
+// "#version 330 core\n"
+// "varying vec3 vColor;"
+// "void main(void) { "
+// " gl_FragColor = vec4(vColor,1.0);"
+// "}";
+
+
+// int init_resources(void)
+// {
+// 	GLint compile_ok = GL_FALSE;
+// 	GLint link_ok = GL_FALSE;
+
+// 	GLuint vertexHandle = glCreateShader(GL_VERTEX_SHADER);
+// 	glShaderSource(vertexHandle, 1, &vs_source, NULL);
+// 	glCompileShader(vertexHandle);
+// 	glGetShaderiv(vertexHandle, GL_COMPILE_STATUS, &compile_ok);
+// 	if (0 == compile_ok)
+// 	{
+// 		fprintf(stderr, "Error in vertex shader\n");
+// 		return 0;
+// 	}
+
+// 	GLuint fragHandle = glCreateShader(GL_FRAGMENT_SHADER);
+// 	glShaderSource(fragHandle, 1, &fs_source, NULL);
+// 	glCompileShader(fragHandle);
+// 	glGetShaderiv(fragHandle, GL_COMPILE_STATUS, &compile_ok);
+// 	if (!compile_ok) {
+// 		fprintf(stderr, "Error in fragment shader\n");
+// 		return 0;
+// 	}
+
+// 	programID = glCreateProgram();
+// 	glAttachShader(programID, vertexHandle);
+// 	glAttachShader(programID, fragHandle);
+// 	glBindFragDataLocation(programID, 0, "gl_FragColor");
+// 	glLinkProgram(programID);
+// 	glGetProgramiv(programID, GL_LINK_STATUS, &link_ok);
+// 	if (!link_ok) {
+// 		fprintf(stderr, "glLinkProgram:");
+// 		return 0;
+// 	}
+// 	return 1;
+// }
+
+float convertPositionX(int X) {
+	static float zeroPosition = SCREEN_WIDTH / 2;
+	return (X - zeroPosition) / zeroPosition;
 }
-)glsl";
 
-const char *fs_source =
-"#version 120\n"
-"varying vec3 vColor;"
-"void main(void) { "
-" gl_FragColor = vec4(vColor,1.0);"
-"}";
-
-
-int init_resources(void)
-{
-	GLint compile_ok = GL_FALSE;
-	GLint link_ok = GL_FALSE;
-
-	GLuint vertexHandle = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexHandle, 1, &vs_source, NULL);
-	glCompileShader(vertexHandle);
-	glGetShaderiv(vertexHandle, GL_COMPILE_STATUS, &compile_ok);
-	if (0 == compile_ok)
-	{
-		fprintf(stderr, "Error in vertex shader\n");
-		return 0;
-	}
-
-	GLuint fragHandle = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragHandle, 1, &fs_source, NULL);
-	glCompileShader(fragHandle);
-	glGetShaderiv(fragHandle, GL_COMPILE_STATUS, &compile_ok);
-	if (!compile_ok) {
-		fprintf(stderr, "Error in fragment shader\n");
-		return 0;
-	}
-
-	programID = glCreateProgram();
-	glAttachShader(programID, vertexHandle);
-	glAttachShader(programID, fragHandle);
-	glBindFragDataLocation(programID, 0, "gl_FragColor");
-	glLinkProgram(programID);
-	glGetProgramiv(programID, GL_LINK_STATUS, &link_ok);
-	if (!link_ok) {
-		fprintf(stderr, "glLinkProgram:");
-		return 0;
-	}
-	return 1;
+float convertPositionY(int Y) {
+	static float zeroPosition = SCREEN_HEIGHT / 2;
+	return ((SCREEN_HEIGHT - Y) - zeroPosition) / zeroPosition;
 }
 
+void drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius, GLfloat red, GLfloat green, GLfloat blue, int triangleAmount){
+	int i;
+	
+	//GLfloat radius = 0.8f; //radius
+	GLfloat twicePi = 2.0f * 3.14;
 
+	glColor3f (1.0f, 1.0f, 1.0f);
+	glBegin(GL_TRIANGLE_FAN);
+	glColor3f (1.0f, 1.0f, 1.0f);
+		glVertex2f(x, y); // center of circle
+		for(i = 0; i <= triangleAmount;i++) {
+			glColor3f (1.0f, 1.0f, 1.0f); 
+			glVertex2f(
+		            x + (radius * cos(i *  twicePi / triangleAmount)), 
+			    y + (radius * sin(i * twicePi / triangleAmount))
+			);
+		}
+		glColor3f (1.0f, 1.0f, 1.0f);
+	glEnd();
+}
 
 int main() {
 	glfwInit();
@@ -81,7 +117,7 @@ int main() {
 		return -1;
 	}
 	//buat object window
-	GLFWwindow* window = glfwCreateWindow(600, 600, "Hello", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Tugas 2", NULL, NULL);
 	if (window == NULL) {
 		fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
 		getchar();
@@ -106,6 +142,10 @@ int main() {
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	programID = LoadShaders("tugas2.vertexshader", "tugas2.fragmentshader" );
+	wheelID = LoadShaders("wheel")
+	
+
 	// Create a Vertex Buffer Object and copy the vertex data to it
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
@@ -128,7 +168,7 @@ int main() {
 		477.0f,581.0f,1.0f,1.0f,1.0f,
 	};
 	for (int i = 0; i < 75; i++) {
-		if ((i % 5 == 0)||(i%5==1)) {
+		if ((i % 5 == 0)||(i % 5 == 1)) {
 			if (i % 5 == 1) {
 				car_data[i] = 1000.0f - car_data[i];
 			}
@@ -161,7 +201,7 @@ int main() {
 	do {
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT);
-		init_resources();
+		// init_resources();
 		// Use our shader
 		glUseProgram(programID);
 
@@ -176,7 +216,15 @@ int main() {
 		glDrawElements(GL_TRIANGLES, 27, GL_UNSIGNED_INT, 0);
 	
 		glDisableVertexAttribArray(posAttrib);
-
+		
+		GLint midpointAttrib = glGetAttribLocation(programID, "midpoint");
+		glEnableVertexAttribArray(midpointAttrib);
+		glVertexAttribPOinter(midpointAttrib, )
+		// drawFilledCircle(convertPositionX (317), convertPositionY (800), 0.15f, 0, 0, 0, 1000);
+		// drawFilledCircle(convertPositionX (717), convertPositionY (800), 0.15f, 0, 0, 0, 1000);
+		drawFilledCircle(convertPositionX (317), convertPositionY (800), 0.1f, 0.5f, 0.5f, 0.5f, 5);
+		drawFilledCircle(convertPositionX (717), convertPositionY (800), 0.1f, 0.5f, 0.5f, 0.5f, 5);
+		
 		// Swap buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();

@@ -1,0 +1,8 @@
+#version 120
+attribue vec2 midpoint
+attribute float radius
+
+void main(){
+    float dist = length(gl_FragCoord.xy - midpoint);
+    circle = smoothstep(radius-1.0, radius+1.0, dist);
+}
