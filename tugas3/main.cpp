@@ -44,16 +44,37 @@ void drawCircle(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat red, GL
 	if (clockwise) {
 		twicePi *= -1;
 	}
-	glColor3f (red, green, blue);
+	glColor3f (red+0.3f, green+0.3f, blue+0.3f);
 	glBegin(GL_TRIANGLE_FAN);
 		glVertex3f(x, y, z); // center of circle
-		for(i = 0; i <= triangleAmount;i++) {
+        glColor3f (red, green, blue);
+		for(i = 0; i <= triangleAmount+1;i++) {
 			glVertex3f(
 					x + (radius * cos(i *  twicePi / triangleAmount)), 
 				y + (radius * sin(i * twicePi / triangleAmount)), z
 			);
 		}
 	glEnd();
+}
+
+void drawWheelWidth(GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat radius, GLfloat red, GLfloat green, GLfloat blue, int triangleAmount, bool clockwise){
+	int i;
+	
+	//GLfloat radius = 0.8f; //radius
+	GLfloat twicePi = 2.0f * 3.14;
+	if (clockwise) {
+		twicePi *= -1;
+	}
+	glColor3f (red, green, blue);
+    for(i = 0; i <= triangleAmount+1;i++){
+        glBegin(GL_POLYGON);
+            glVertex3f(x + (radius * cos(i *  twicePi / triangleAmount)), y + (radius * sin(i * twicePi / triangleAmount)), z);
+            glVertex3f(x + (radius * cos((i+1) *  twicePi / triangleAmount)), y + (radius * sin((i+1) * twicePi / triangleAmount)), z);
+            glVertex3f(x + (radius * cos((i+1) *  twicePi / triangleAmount)), y + (radius * sin((i+1) * twicePi / triangleAmount)), z-width);
+            glVertex3f(x + (radius * cos(i *  twicePi / triangleAmount)), y + (radius * sin(i * twicePi / triangleAmount)), z-width);
+	    glEnd();
+    }
+    
 }
 
 void drawCar() {
@@ -113,13 +134,6 @@ void drawCar() {
 		glVertex3f(convertPositionX(875), convertPositionY(807), 0.4f);
 	glEnd();
 
-	// Underbody
-	glBegin(GL_POLYGON);
-		glVertex3f(convertPositionX(155), convertPositionY(807), -0.4f);
-		glVertex3f(convertPositionX(155), convertPositionY(807), 0.4f);
-		glVertex3f(convertPositionX(875), convertPositionY(807), 0.4f);
-		glVertex3f(convertPositionX(875), convertPositionY(807), -0.4f);
-	glEnd();
 
 	// Back Window Body
 	glBegin(GL_POLYGON);
@@ -137,6 +151,16 @@ void drawCar() {
 		glVertex3f(convertPositionX(155), convertPositionY(807), -0.4f);
 	glEnd();
 
+	// Underbody
+	glBegin(GL_POLYGON);
+        glColor3f(0.2f, 0.2f, 0.2f);
+		glVertex3f(convertPositionX(155), convertPositionY(807), -0.4f);
+		glVertex3f(convertPositionX(155), convertPositionY(807), 0.4f);
+		glVertex3f(convertPositionX(875), convertPositionY(807), 0.4f);
+		glVertex3f(convertPositionX(875), convertPositionY(807), -0.4f);
+	glEnd();
+
+    
 	// Front Windows
 	glBegin(GL_POLYGON);
 		glColor3f(0.8f, 0.8f, 0.8f);
@@ -161,23 +185,23 @@ void drawCar() {
 
 	//Front Right Window
 	glBegin(GL_POLYGON);	
-		glColor3f(0.8f, 0.8f, 0.8f);
+        glColor3f(1, 1, 1);
 		glVertex3f(convertPositionX(478), convertPositionY(382), 0.4001f);
-
-		glColor3f(1, 1, 1);
 		glVertex3f(convertPositionX(613), convertPositionY(382), 0.4001f);
 		glVertex3f(convertPositionX(716), convertPositionY(562), 0.4001f);
-		glVertex3f(convertPositionX(477), convertPositionY(562), 0.4001f);
+		
+        glColor3f(0.8f, 0.8f, 0.8f);
+        glVertex3f(convertPositionX(477), convertPositionY(562), 0.4001f);
 	glEnd();
 
 	//Back Left Window
 	glBegin(GL_POLYGON);	
-		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(197), convertPositionY(562), -0.4001f);
-
 		glColor3f(1, 1, 1);
+        glVertex3f(convertPositionX(197), convertPositionY(562), -0.4001f);
 		glVertex3f(convertPositionX(444), convertPositionY(562), -0.4001f);
 		glVertex3f(convertPositionX(444), convertPositionY(382), -0.4001f);
+        
+        glColor3f(0.8f, 0.8f, 0.8f);
 		glVertex3f(convertPositionX(269), convertPositionY(382), -0.4001f);
 	glEnd();
 
@@ -202,14 +226,97 @@ void drawCar() {
 		glVertex3f(convertPositionX(182), convertPositionY(562), 0.375f);
 		glVertex3f(convertPositionX(182), convertPositionY(562), -0.375f);
 	glEnd();
+
+    //Left Headlight
+    glBegin(GL_TRIANGLE_FAN);
+        glColor3f(1, 1, 1);
+        glVertex3f(convertPositionX(861), convertPositionY(625), 0.3f);
+        
+        glColor3f(0.8f, 0.8f, 0.8f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), 0.4f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), 0.2f);
+        glVertex3f(convertPositionX(862), convertPositionY(640), 0.2f);
+        glVertex3f(convertPositionX(862), convertPositionY(640), 0.4f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), 0.4f);
+    glEnd();
+
+    //Right Headlight
+    glBegin(GL_TRIANGLE_FAN);
+        glColor3f(1, 1, 1);
+        glVertex3f(convertPositionX(861), convertPositionY(625), -0.3f);
+        
+        glColor3f(0.8f, 0.8f, 0.8f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), -0.4f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), -0.2f);
+        glVertex3f(convertPositionX(862), convertPositionY(640), -0.2f);
+        glVertex3f(convertPositionX(862), convertPositionY(640), -0.4f);
+        glVertex3f(convertPositionX(860), convertPositionY(610), -0.4f);
+    glEnd();
+
+    //Left Taillight
+    glBegin(GL_TRIANGLE_FAN);
+        glColor3f(1, 0, 0);
+        glVertex3f(convertPositionX(154.999), convertPositionY(661), -0.3f);
+
+        glColor3f(0.8f, 0, 0);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), -0.4f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), -0.2f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(676), -0.2f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(676), -0.4f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), -0.4f);
+    glEnd();
+
+    //Right Taillight
+    glBegin(GL_TRIANGLE_FAN);
+        glColor3f(1, 0, 0);
+        glVertex3f(convertPositionX(154.999), convertPositionY(661), 0.3f);
+
+        glColor3f(0.8f, 0, 0);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), 0.4f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), 0.2f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(676), 0.2f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(676), 0.4f);
+        glVertex3f(convertPositionX(154.999), convertPositionY(646), 0.4f);
+    glEnd();
+
+    //Front Grill
+    glBegin(GL_POLYGON);
+        glColor3f(0.2f, 0.2f, 0.2f);
+        glVertex3f(convertPositionX(862), convertPositionY(650), -0.3f);
+		glVertex3f(convertPositionX(862), convertPositionY(650), 0.3f);
+		glVertex3f(convertPositionX(874), convertPositionY(790), 0.25f);
+		glVertex3f(convertPositionX(874), convertPositionY(790), -0.25f);
+    glEnd();
 }
 
-void drawWheel(float width) {
-	drawCircle(convertPositionX (317), convertPositionY (800), 1, 0.15f, 0, 0, 0, 1000, true);
-	drawCircle(convertPositionX (717), convertPositionY (800), 1, 0.15f, 0, 0, 0, 1000, true);
+void drawWheel(float zPosition, float width) {
+	drawCircle(convertPositionX (317), convertPositionY (800), zPosition, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(convertPositionX (717), convertPositionY (800), zPosition, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(velgBackX, velgBackY, zPosition+0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+	drawCircle(velgFrontX, velgFrontY, zPosition+0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
 
-	drawCircle(velgBackX, velgBackY, 1, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
-	drawCircle(velgFrontX, velgFrontY, 1, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+    //Wheel Inside 
+    drawCircle(convertPositionX (317), convertPositionY (800), zPosition-width, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(convertPositionX (717), convertPositionY (800), zPosition-width, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(velgBackX, velgBackY, zPosition-width-0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+	drawCircle(velgFrontX, velgFrontY, zPosition-width-0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+
+    drawWheelWidth(convertPositionX (317), convertPositionY (800), zPosition, width, 0.15f, 0, 0, 0, 1000, true);
+    drawWheelWidth(convertPositionX (717), convertPositionY (800), zPosition, width, 0.15f, 0, 0, 0, 1000, true);
+
+    drawCircle(convertPositionX (317), convertPositionY (800), -zPosition, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(convertPositionX (717), convertPositionY (800), -zPosition, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(velgBackX, velgBackY, -zPosition-0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+	drawCircle(velgFrontX, velgFrontY, -zPosition-0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+
+    //Wheel Inside
+    drawCircle(convertPositionX (317), convertPositionY (800), -zPosition+width, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(convertPositionX (717), convertPositionY (800), -zPosition+width, 0.15f, 0, 0, 0, 1000, true);
+	drawCircle(velgBackX, velgBackY, -zPosition+width+0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+	drawCircle(velgFrontX, velgFrontY, -zPosition+width+0.001f, 0.1f, 0.4f, 0.4f, 0.4f, 6, true);
+
+    drawWheelWidth(convertPositionX (317), convertPositionY (800), -zPosition, -width, 0.15f, 0, 0, 0, 1000, true);
+    drawWheelWidth(convertPositionX (717), convertPositionY (800), -zPosition, -width, 0.15f, 0, 0, 0, 1000, true);
 }
  
 void drawBox()
@@ -279,8 +386,9 @@ void display() {
 	glRotatef(yrot, 0.0f, 1.0f, 0.0f);
 	
 	drawCar();
-	drawWheel(0.1f);
+	drawWheel(0.401f,0.075f);
 	
+
 	glFlush();
 	glutSwapBuffers();
 }
