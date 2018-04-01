@@ -140,56 +140,56 @@ void drawCar() {
 	// Front Windows
 	glBegin(GL_POLYGON);
 		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(630), convertPositionY(380), 0.375f);
+		glVertex3f(convertPositionX(632), convertPositionY(380), 0.375f);
 
 		glColor3f(1, 1, 1);
-		glVertex3f(convertPositionX(630), convertPositionY(380), -0.375f);
-		glVertex3f(convertPositionX(740), convertPositionY(579), -0.375f);
-		glVertex3f(convertPositionX(740), convertPositionY(579), 0.375f);
+		glVertex3f(convertPositionX(632), convertPositionY(380), -0.375f);
+		glVertex3f(convertPositionX(735), convertPositionY(562), -0.375f);
+		glVertex3f(convertPositionX(735), convertPositionY(562), 0.375f);
 	glEnd();
 
 	//Back Right Window
 	glBegin(GL_POLYGON);	
 		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(269), convertPositionY(382), 0.4f);
+		glVertex3f(convertPositionX(269), convertPositionY(382), 0.4001f);
 
 		glColor3f(1, 1, 1);
-		glVertex3f(convertPositionX(444), convertPositionY(382), 0.4f);
-		glVertex3f(convertPositionX(444), convertPositionY(581), 0.4f);
-		glVertex3f(convertPositionX(197), convertPositionY(581), 0.4f);
+		glVertex3f(convertPositionX(444), convertPositionY(382), 0.4001f);
+		glVertex3f(convertPositionX(444), convertPositionY(562), 0.4001f);
+		glVertex3f(convertPositionX(197), convertPositionY(562), 0.4001f);
 	glEnd();
 
 	//Front Right Window
 	glBegin(GL_POLYGON);	
 		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(478), convertPositionY(382), 0.4f);
+		glVertex3f(convertPositionX(478), convertPositionY(382), 0.4001f);
 
 		glColor3f(1, 1, 1);
-		glVertex3f(convertPositionX(613), convertPositionY(382), 0.4f);
-		glVertex3f(convertPositionX(716), convertPositionY(581), 0.4f);
-		glVertex3f(convertPositionX(477), convertPositionY(581), 0.4f);
+		glVertex3f(convertPositionX(613), convertPositionY(382), 0.4001f);
+		glVertex3f(convertPositionX(716), convertPositionY(562), 0.4001f);
+		glVertex3f(convertPositionX(477), convertPositionY(562), 0.4001f);
 	glEnd();
 
 	//Back Left Window
 	glBegin(GL_POLYGON);	
 		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(197), convertPositionY(581), -0.4f);
+		glVertex3f(convertPositionX(197), convertPositionY(562), -0.4001f);
 
 		glColor3f(1, 1, 1);
-		glVertex3f(convertPositionX(444), convertPositionY(581), -0.4f);
-		glVertex3f(convertPositionX(444), convertPositionY(382), -0.4f);
-		glVertex3f(convertPositionX(269), convertPositionY(382), -0.4f);
+		glVertex3f(convertPositionX(444), convertPositionY(562), -0.4001f);
+		glVertex3f(convertPositionX(444), convertPositionY(382), -0.4001f);
+		glVertex3f(convertPositionX(269), convertPositionY(382), -0.4001f);
 	glEnd();
 
 	//Front Left Window
 	glBegin(GL_POLYGON);	
 		glColor3f(0.8f, 0.8f, 0.8f);
-		glVertex3f(convertPositionX(477), convertPositionY(581), -0.4f);
+		glVertex3f(convertPositionX(477), convertPositionY(562), -0.4001f);
 
 		glColor3f(1, 1, 1);
-		glVertex3f(convertPositionX(716), convertPositionY(581), -0.4f);
-		glVertex3f(convertPositionX(613), convertPositionY(382), -0.4f);
-		glVertex3f(convertPositionX(478), convertPositionY(382), -0.4f);
+		glVertex3f(convertPositionX(716), convertPositionY(562), -0.4001f);
+		glVertex3f(convertPositionX(613), convertPositionY(382), -0.4001f);
+		glVertex3f(convertPositionX(478), convertPositionY(382), -0.4001f);
 	glEnd();
 
 	//Back Window
@@ -199,8 +199,8 @@ void drawCar() {
 
 		glColor3f(1, 1, 1);
 		glVertex3f(convertPositionX(250), convertPositionY(380), 0.375f);
-		glVertex3f(convertPositionX(180), convertPositionY(581), 0.375f);
-		glVertex3f(convertPositionX(180), convertPositionY(581), -0.375f);
+		glVertex3f(convertPositionX(182), convertPositionY(562), 0.375f);
+		glVertex3f(convertPositionX(182), convertPositionY(562), -0.375f);
 	glEnd();
 }
 
@@ -258,8 +258,8 @@ bool init() {
 	glClearColor(0.93f, 0.93f, 0.93f, 0.0f);
 	
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT_AND_BACK);
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_FRONT);
 	glDepthFunc(GL_LEQUAL);
 	glClearDepth(1.0f);
 	
