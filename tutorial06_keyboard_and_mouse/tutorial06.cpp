@@ -1,7 +1,7 @@
 // Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <math.h>
 // Include GLEW
 #include <GL/glew.h>
 
@@ -26,6 +26,10 @@ using namespace glm;
 #define VELG_TRIANGLE_AMOUNT 6
 #define ROTATE_ANGLE 10
 
+vec3 normalizeVertex (vec3 v1, vec3 v2, vec3 v3) {
+	return cross((v2 - v1), (v3 - v1)); 
+}
+
 float convertPositionX(int X) {
 	static float zeroPosition = SCREEN_WIDTH / 2;
 	return (X - zeroPosition) / zeroPosition;
@@ -34,6 +38,21 @@ float convertPositionX(int X) {
 float convertPositionY(int Y) {
 	static float zeroPosition = SCREEN_HEIGHT / 2;
 	return ((SCREEN_HEIGHT - Y) - zeroPosition) / zeroPosition;
+}
+
+void generateWheelNormal(GLfloat* circleNormal, int triangleAmount, bool clockwise) {
+	int i;
+
+	for (i = 0; i <= triangleAmount; ++i) {
+		int index = i * 3;
+		circleNormal[index] = 0;
+		circleNormal[index + 1] = 0;
+		circleNormal[index + 2] = !clockwise;
+		int offsetedIndex = index + triangleAmount + 1;
+		circleNormal[offsetedIndex] = 0;
+		circleNormal[offsetedIndex + 1] = 0;
+		circleNormal[offsetedIndex + 2] = clockwise;
+	}
 }
 
 void generateWheelUV(GLfloat* circleUV, GLfloat radius, int triangleAmount) {
@@ -200,6 +219,9 @@ int main( void )
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
+
+	GLuint ViewPosID = glGetUniformLocation(programID, "viewPos");
+
 
 	// Load the texturef
 	GLuint sideTexture = loadBMP_custom("Side Body.bmp");
@@ -410,6 +432,22 @@ int main( void )
 		40, 39, 41
 	};
 
+	GLfloat normals[sizeof(g_vertex_buffer_data) / sizeof(GLfloat)];
+	//Get normal for each vertex
+	for (int i = 0; i < sizeof(elements) / sizeof(GLfloat)/3; i++) {
+		vec3 normal = normalizeVertex(
+			vec3(g_vertex_buffer_data[elements[i * 3] * 3], g_vertex_buffer_data[elements[i * 3] * 3 + 1], g_vertex_buffer_data[elements[i * 3] * 3 + 2]), 
+			vec3(g_vertex_buffer_data[elements[i * 3 + 1] * 3], g_vertex_buffer_data[elements[i * 3 + 1] * 3 + 1], g_vertex_buffer_data[elements[i * 3 + 1] * 3 + 2]),
+			vec3(g_vertex_buffer_data[elements[i * 3 + 2] * 3], g_vertex_buffer_data[elements[i * 3 + 2] * 3 + 1], g_vertex_buffer_data[elements[i * 3 + 2] * 3 + 2]));
+
+		for (int j = 0; j < 3; ++j) {
+			// std::cout << elements[i * 3 + j] << " " << normal.x << " " << normal.y << " " << normal.z << std::endl;
+			normals [elements[i * 3 + j] * 3] = normal.x;
+			normals [elements[i * 3 + j] * 3 + 1] = normal.y;
+			normals [elements[i * 3 + j] * 3 + 2] = normal.z;
+		}
+	}
+
 	int wheelDataSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 3 * 2;
 	int wheelElementSize = WHEEL_TRIANGLE_AMOUNT * 3 * 2 * 2;
 	int wheelUVSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 2 * 2;
@@ -426,8 +464,15 @@ int main( void )
 
 	GLfloat rightWheelUV[wheelDataSize];
 	GLfloat leftWheelUV[wheelDataSize];
+
+	GLfloat rightWheelNormal[wheelDataSize];
+	GLfloat leftWheelNormal[wheelDataSize];
+
 	generateWheelUV(rightWheelUV, 0.5f, WHEEL_TRIANGLE_AMOUNT);
 	generateWheelUV(leftWheelUV, 0.5f, WHEEL_TRIANGLE_AMOUNT);
+
+	generateWheelNormal(rightWheelNormal, WHEEL_TRIANGLE_AMOUNT, true);
+	generateWheelNormal(leftWheelNormal, WHEEL_TRIANGLE_AMOUNT, false);
 
 	generateWheelVertexes(rearLeftWheelData, rearLeftWheelElement, convertPositionX(317), convertPositionY(800), -0.4001f, 0.1f, 0.15f, WHEEL_TRIANGLE_AMOUNT, false);
 	generateWheelVertexes(frontLeftWheelData, frontLeftWheelElement, convertPositionX(717), convertPositionY(800), -0.4001f, 0.1f, 0.15f, WHEEL_TRIANGLE_AMOUNT, false);
@@ -443,6 +488,11 @@ int main( void )
 	glGenBuffers(1, &uvbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
+
+	GLuint normalbuffer;
+	glGenBuffers(1, &normalbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
 
 	GLuint elementbuffer;
 	glGenBuffers(1, &elementbuffer);
@@ -474,7 +524,7 @@ int main( void )
 		// Send our transformation to the currently bound shader, 
 		// in the "MVP" uniform
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
+		glUniform3fv(ViewPosID,1, &getCameraPosition()[0]);
 		// Bind our texture in Texture Unit 0
 		glActiveTexture(GL_TEXTURE0);
 		// Set our "myTextureSampler" sampler to use Texture Unit 0
@@ -498,6 +548,17 @@ int main( void )
 		glVertexAttribPointer(
 			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
 			2,                                // size : U+V => 2
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			3,                                // size : U+V => 2
 			GL_FLOAT,                         // type
 			GL_FALSE,                         // normalized?
 			0,                                // stride
@@ -547,6 +608,9 @@ int main( void )
 		GLuint uvbuffer;
 		glGenBuffers(1, &uvbuffer);
 
+		GLuint normalbuffer;
+		glGenBuffers(1, &normalbuffer);
+
 		GLuint elementbuffer;
 		glGenBuffers(1, &elementbuffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
@@ -572,12 +636,25 @@ int main( void )
 			(void*)0                          // array buffer offset
 		);
 
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			3,                                // size : U+V => 2
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
 		glBindTexture(GL_TEXTURE_2D, wheelTexture);
 
 		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(frontLeftWheelData), frontLeftWheelData, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelUV), leftWheelUV, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelNormal), leftWheelNormal, GL_STATIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frontLeftWheelElement), frontLeftWheelElement, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(frontLeftWheelElement) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
@@ -585,6 +662,8 @@ int main( void )
 		glBufferData(GL_ARRAY_BUFFER, sizeof(frontLeftWheelData), rearLeftWheelData, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelUV), leftWheelUV, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelNormal), leftWheelNormal, GL_STATIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frontLeftWheelElement), rearLeftWheelElement, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(frontLeftWheelElement) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
@@ -592,6 +671,8 @@ int main( void )
 		glBufferData(GL_ARRAY_BUFFER, sizeof(frontLeftWheelData), frontRightWheelData, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(rightWheelUV), rightWheelUV, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelNormal), rightWheelNormal, GL_STATIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frontLeftWheelElement), frontRightWheelElement, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(frontLeftWheelElement) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
@@ -599,6 +680,8 @@ int main( void )
 		glBufferData(GL_ARRAY_BUFFER, sizeof(frontLeftWheelData), rearRightWheelData, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(rightWheelUV), rightWheelUV, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelNormal), rightWheelNormal, GL_STATIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frontLeftWheelElement), rearRightWheelElement, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(frontLeftWheelElement) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
