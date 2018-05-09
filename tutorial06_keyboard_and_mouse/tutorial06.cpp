@@ -199,6 +199,14 @@ void rotate(GLfloat x0, GLfloat y0, GLfloat* x1, GLfloat* y1, float angle) {
 	*y1 = tempY;
 }
 
+void moveCarHorizontal ( int speed) {
+	// std::cout << sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT) << std::endl;
+	// for (int i = 0; i < sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT); i++ ) {
+		
+	// 	g_vertex_buffer_data[i * 3] += speed;
+	// }
+}
+
 
 int main( void )
 {
@@ -630,6 +638,8 @@ int main( void )
 			road_vertex_buffer_data[i * 3] -= carSpeed / 500;
 		}
 
+
+
 		computeMatricesFromInputs();
 		glm::mat4 ModelMatrix = glm::mat4(1.0);
 		glm::mat4 ProjectionMatrix = getProjectionMatrix();
@@ -871,6 +881,7 @@ int main( void )
 		
 		// Draw the triangle !
 		// glDrawArrays(GL_TRIANGLES, 0, 15*3); // 12*3 indices starting at 0 -> 12 triangles
+		
 		glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
 
@@ -1053,15 +1064,42 @@ int main( void )
 		glfwPollEvents();
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-			carSpeed = 40;
+			if (carSpeed < 40) {
+				carSpeed += 10;
+			}
 		} else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-			carSpeed = 20;
+			if (carSpeed < 20) {
+				carSpeed += 5;	
+			}
 		} else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-			carSpeed = -10;
-		} else {
-			carSpeed = 0;
+			if (carSpeed > -10) {
+				carSpeed -= 2.5;
+			}
+		} else  {
+			if (carSpeed > 0) {
+				carSpeed -= 2.5;
+			}
 		}
-		std::cout << carSpeed << std::endl;
+
+		if (carSpeed > 0 || carSpeed < 0) {
+			if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+				for (int i = 0; i < sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3; i++ ) {
+					if (road_vertex_buffer_data[i * 3 + 2] < 2) {
+						road_vertex_buffer_data[i * 3 + 2] += 0.02;	
+					} else {
+						break;
+					}
+				}
+			} else 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+				for (int i = sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3 - 1 ;i >= 0; i-- ) {
+					if (road_vertex_buffer_data[i * 3 + 2] > -2.03) {
+						road_vertex_buffer_data[i * 3 + 2] -= 0.02;
+					} else {
+						break;
+					}
+				}
+			}
+		}
 
 	} // Check if the ESC key was pressed or the window was closed
 	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
