@@ -28,9 +28,9 @@ using namespace glm;
 #define VELG_TRIANGLE_AMOUNT 6
 
 // CPU representation of a particle
-struct Particle{
+struct Particle {
 	glm::vec3 pos, speed;
-	unsigned char r,g,b,a; // Color
+	unsigned char r, g, b, a; // Color
 	float size, angle, weight;
 	float life; // Remaining life of the particle. if <0 : dead and unused.
 	float cameradistance; // *Squared* distance to the camera. if dead : -1.0f
@@ -41,23 +41,43 @@ struct Particle{
 	}
 };
 
+//for collision detection
+struct AABB {
+	glm::vec3 maxPosition;
+	glm::vec3 minPosition;
+};
+
+bool checkCollision(AABB obj1, AABB obj2){
+	bool checkX = (obj1.maxPosition.x > obj2.minPosition.x) && (obj1.minPosition.x < obj2.maxPosition.x);
+	bool checkY = (obj1.maxPosition.y > obj2.minPosition.y) && (obj1.minPosition.x < obj2.maxPosition.y);
+	bool checkZ = (obj1.maxPosition.z > obj2.minPosition.z) && (obj1.minPosition.x < obj2.maxPosition.z);
+	return checkX && checkY && checkZ;
+}
+
+bool checkRainCollision(AABB obj1, vec3 point) {
+	bool checkX = point.x > obj1.minPosition.x && point.x < obj1.maxPosition.x;
+	bool checkY = point.y > obj1.minPosition.y && point.y < obj1.maxPosition.y;
+	bool checkZ = point.z > obj1.minPosition.z && point.z < obj1.maxPosition.z;
+	return checkX && checkY && checkZ;
+}
+
 const int MaxParticles = 1000;
 Particle ParticlesContainer[MaxParticles];
 int LastUsedParticle = 0;
 
 // Finds a Particle in ParticlesContainer which isn't used yet.
 // (i.e. life < 0);
-int FindUnusedParticle(){
+int FindUnusedParticle() {
 
-	for(int i=LastUsedParticle; i<MaxParticles; i++){
-		if (ParticlesContainer[i].life < 0){
+	for (int i = LastUsedParticle; i<MaxParticles; i++) {
+		if (ParticlesContainer[i].life < 0) {
 			LastUsedParticle = i;
 			return i;
 		}
 	}
 
-	for(int i=0; i<LastUsedParticle; i++){
-		if (ParticlesContainer[i].life < 0){
+	for (int i = 0; i<LastUsedParticle; i++) {
+		if (ParticlesContainer[i].life < 0) {
 			LastUsedParticle = i;
 			return i;
 		}
@@ -66,12 +86,12 @@ int FindUnusedParticle(){
 	return 0; // All particles are taken, override the first one
 }
 
-void SortParticles(){
+void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }
 
-vec3 normalizeVertex (vec3 v1, vec3 v2, vec3 v3) {
-	return cross((v2 - v1), (v3 - v1)); 
+vec3 normalizeVertex(vec3 v1, vec3 v2, vec3 v3) {
+	return cross((v2 - v1), (v3 - v1));
 }
 
 float convertPositionX(int X) {
@@ -103,9 +123,9 @@ void generateWheelUV(GLfloat* circleUV, GLfloat radius, int triangleAmount) {
 	int i;
 
 	GLfloat twicePi = 2.0f * 3.14159265359;
-	
+
 	int indexOffset = (triangleAmount + 1) * 2;
-	
+
 	circleUV[0] = 0.5;
 	circleUV[1] = 0.5;
 	circleUV[indexOffset] = 0.5;
@@ -126,14 +146,15 @@ void generateWheelVertexes(GLfloat* circleData, GLuint* elementData, GLfloat x, 
 	GLfloat twicePi = 2.0f * 3.14159265359;
 	if (!clockwise) {
 		twicePi = -twicePi;
-	} else {
+	}
+	else {
 		width = -width;
 	}
 
 	int indexOffset = (triangleAmount + 1) * 3;
 
 	circleData[0] = x;
-	circleData[1]= y;
+	circleData[1] = y;
 	circleData[2] = z;
 	circleData[indexOffset] = x;
 	circleData[indexOffset + 1] = y;
@@ -149,7 +170,7 @@ void generateWheelVertexes(GLfloat* circleData, GLuint* elementData, GLfloat x, 
 		circleData[offsetedIndex + 1] = y + (radius * sin(i * -twicePi / triangleAmount));
 		circleData[offsetedIndex + 2] = z + width;
 	}
-	
+
 	indexOffset -= 3;
 
 	for (i = 0; i < triangleAmount - 1; i++) {
@@ -199,36 +220,37 @@ void rotate(GLfloat x0, GLfloat y0, GLfloat* x1, GLfloat* y1, float angle) {
 	*y1 = tempY;
 }
 
-void moveCarHorizontal ( int speed) {
+void moveCarHorizontal(int speed) {
 	// std::cout << sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT) << std::endl;
 	// for (int i = 0; i < sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT); i++ ) {
-		
+
 	// 	g_vertex_buffer_data[i * 3] += speed;
 	// }
 }
 
 
-int main( void )
+int main(void)
 {
 	// Initialise GLFW
-	if( !glfwInit() )
+	if (!glfwInit())
 	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
+		fprintf(stderr, "Failed to initialize GLFW\n");
 		getchar();
 		return -1;
 	}
-
+	/*
 	glfwWindowHint(GLFW_SAMPLES, 4);
-	glfwWindowHint(GLFW_RESIZABLE,GL_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	*/
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( 1024, 768, "Tutorial 18 - Particules", NULL, NULL);
-	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
+	window = glfwCreateWindow(1024, 768, "Tutorial 18 - Particules", NULL, NULL);
+	if (window == NULL) {
+		fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
 		getchar();
 		glfwTerminate();
 		return -1;
@@ -246,12 +268,12 @@ int main( void )
 
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-    // Hide the mouse and enable unlimited mouvement
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
-    // Set the mouse at the center of the screen
-    glfwPollEvents();
-    glfwSetCursorPos(window, 1024/2, 768/2);
+	// Hide the mouse and enable unlimited mouvement
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	// Set the mouse at the center of the screen
+	glfwPollEvents();
+	glfwSetCursorPos(window, 1024 / 2, 768 / 2);
 
 	// Dark blue background
 	glClearColor(1.0f, 1.0f, 1, 0.0f);
@@ -267,18 +289,18 @@ int main( void )
 
 
 	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders( "Particle.vertexshader", "Particle.fragmentshader" );
+	GLuint programID = LoadShaders("Particle.vertexshader", "Particle.fragmentshader");
 
 	// Vertex shader
-	GLuint CameraRight_worldspace_ID  = glGetUniformLocation(programID, "CameraRight_worldspace");
-	GLuint CameraUp_worldspace_ID  = glGetUniformLocation(programID, "CameraUp_worldspace");
+	GLuint CameraRight_worldspace_ID = glGetUniformLocation(programID, "CameraRight_worldspace");
+	GLuint CameraUp_worldspace_ID = glGetUniformLocation(programID, "CameraUp_worldspace");
 	GLuint ViewProjMatrixID = glGetUniformLocation(programID, "VP");
 
 	// fragment shader
-	GLuint TextureID  = glGetUniformLocation(programID, "myTextureSampler");
+	GLuint TextureID = glGetUniformLocation(programID, "myTextureSampler");
 
-		// Create and compile our GLSL program from the shaders
-	GLuint carID = LoadShaders( "TransformVertexShader.vertexshader", "TextureFragmentShader.fragmentshader" );
+	// Create and compile our GLSL program from the shaders
+	GLuint carID = LoadShaders("TransformVertexShader.vertexshader", "TextureFragmentShader.fragmentshader");
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(carID, "MVP");
@@ -293,18 +315,29 @@ int main( void )
 	GLuint blackTexture = loadBMP_custom("Black.bmp");
 	GLuint wheelTexture = loadBMP_custom("Wheel.bmp");
 	GLuint roadTexture = loadBMP_custom("Road.bmp");
+	GLuint grassTexture = loadBMP_custom("Grass.bmp");
+	GLuint itemTexture = loadBMP_custom("Item.bmp");
 
-	
+
 	static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
-	static GLubyte* g_particule_color_data         = new GLubyte[MaxParticles * 4];
+	static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 
-	for(int i=0; i<MaxParticles; i++){
+	for (int i = 0; i<MaxParticles; i++) {
 		ParticlesContainer[i].life = -1.0f;
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
 
 	GLuint Texture = loadDDS("particle.DDS");
-	
+
+	//TABB for collision detection
+	AABB carAABB;
+	carAABB.maxPosition = glm::vec3(0.75,0.46,0.4);
+	carAABB.minPosition = glm::vec3(-0.69, -0.614, -0.4);
+	AABB itemAABB;
+	itemAABB.maxPosition = glm::vec3(2.0, 0.0, 0.25);
+	itemAABB.minPosition = glm::vec3(1.5, -0.7, -0.25);
+
+
 	static GLfloat g_vertex_buffer_data[] = {
 		255.0f,370.0f,-0.4f,
 		625.0f,370.0f,-0.4f,
@@ -313,7 +346,7 @@ int main( void )
 		875.0f,807.0f,-0.4f,
 		155.0f,807.0f,-0.4f,
 		155.0f,646.0f,-0.4f,
-		
+
 		255.0f,370.0f,0.4f,
 		625.0f,370.0f,0.4f,
 		740.0f,579.0f,0.4f,
@@ -325,25 +358,25 @@ int main( void )
 		// Front bumper
 		875.0f,807.0f,-0.4f,
 		859.0f,610.0f,0.4f,
-		875.0f,807.0f,0.4f,	
+		875.0f,807.0f,0.4f,
 		859.0f,610.0f,-0.4f,
 
 		// Hood
-		
+
 		859.0f,610.0f,-0.4f,
 		740.0f,579.0f,0.4f,
 		859.0f,610.0f,0.4f,
 		740.0f,579.0f,-0.4f,
 
 		// Front window body
-		
+
 		740.0f,579.0f,-0.4f,
 		625.0f,370.0f,0.4f,
 		740.0f,579.0f,0.4f,
 		625.0f,370.0f,-0.4f,
 
 		// Roof
-		
+
 		625.0f,370.0f,-0.4f,
 		255.0f,370.0f,0.4f,
 		625.0f,370.0f,0.4f,
@@ -372,13 +405,14 @@ int main( void )
 		int modedIndex = i % 3;
 		if (modedIndex == 0) {
 			g_vertex_buffer_data[i] = convertPositionX(g_vertex_buffer_data[i]);
-		} else if (modedIndex == 1) {
+		}
+		else if (modedIndex == 1) {
 			g_vertex_buffer_data[i] = convertPositionY(g_vertex_buffer_data[i]);
 		}
 	}
 
 	// Two UV coordinatesfor each vertex. They were created with Blender.
-	static  GLfloat g_uv_buffer_data[] = { 
+	static  GLfloat g_uv_buffer_data[] = {
 		255.0f,370.0f,
 		625.0f,370.0f,
 		740.0f,579.0f,
@@ -402,21 +436,21 @@ int main( void )
 		300.0f,600.0f,
 
 		// Hood
-		
+
 		300.0f,859.0f,
 		700.0f,843.0f,
 		700.0f,859.0f,
 		300.0f,843.0f,
 
 		// Front window body
-		
+
 		300.0f,857.0f,
 		700.0f,667.0f,
 		700.0f,857.0f,
 		300.0f,667.0f,
 
 		// Roof
-		
+
 		625.0f,370.0f,
 		255.0f,370.0f,
 		625.0f,370.0f,
@@ -442,9 +476,10 @@ int main( void )
 	};
 
 	for (int i = 0; i < sizeof(g_uv_buffer_data) / sizeof(GL_FLOAT); i++) {
-		if( i % 2 == 0) {
+		if (i % 2 == 0) {
 			g_uv_buffer_data[i] = g_uv_buffer_data[i] / SCREEN_HEIGHT;
-		} else {
+		}
+		else {
 			g_uv_buffer_data[i] = (SCREEN_WIDTH - g_uv_buffer_data[i]) / SCREEN_WIDTH;
 		}
 
@@ -495,20 +530,39 @@ int main( void )
 	};
 
 	static GLfloat road_vertex_buffer_data[] = {
-		-1000.0f, -0.75f, 1.25f,
-		1000.0f, -0.75f, 1.25f,
-		-1000.0f, -0.75f, -1.25f,
-		1000.0f, -0.75f, -1.25f
+		-50.0f, -0.75f, 1.25f,
+		50.0f, -0.75f, 1.25f,
+		-50.0f, -0.75f, -1.25f,
+		50.0f, -0.75f, -1.25f
 	};
 
-	GLfloat road_uv_buffer_data[] = { 
-		0.1, -1000,
-		0.1, 1000,
-		1, -1000,
-		1, 1000
+	static GLfloat grass_vertex_buffer_data[] = {
+		-50.0f, -0.8f, 5.0f,
+		50.0f, -0.8f, 5.0f,
+		-50.0f, -0.8f, -5.0f,
+		50.0f, -0.8f, -5.0f
+	};
+
+	GLfloat road_uv_buffer_data[] = {
+		0.1, -10,
+		0.1, 10,
+		1, -10,
+		1, 10
+	};
+
+	GLfloat grass_uv_buffer_data[] = {
+		0.1, -10,
+		0.1, 10,
+		1, -10,
+		1, 10
 	};
 
 	GLuint roadElements[] = {
+		0, 1, 2,
+		2, 1, 3
+	};
+
+	GLuint grassElements[] = {
 		0, 1, 2,
 		2, 1, 3
 	};
@@ -518,34 +572,71 @@ int main( void )
 		0, 1, 0
 	};
 
+	GLfloat grassNormals[] = {
+		0, 1, 0,
+		0, 1, 0
+	};
+
+	static GLfloat item_vertex_buffer_data[] = {
+		//upper
+		1.5f, 0.0f, -0.25f,
+		1.5f, 0.0f, 0.25f,
+		2.0f, 0.0f, 0.25f,
+		2.0f, 0.0f, -0.25f,
+		//lower
+		1.5f, -0.7f, -0.25f,
+		1.5f, -0.7f, 0.25f,
+		2.0f, -0.7f, 0.25f,
+		2.0f, -0.7f, -0.25f
+	};
+
+	GLuint itemElements[] = {
+		//top and bottom
+		0,1,2,
+		0,2,3,
+		4,5,6,
+		4,6,7,
+		//left and right
+		0,1,5,
+		0,5,4,
+		3,2,6,
+		3,6,7,
+		//front and back
+		0,3,7,
+		0,7,4,
+		1,2,6,
+		1,6,5
+	};
+
 	GLfloat normals[sizeof(g_vertex_buffer_data) / sizeof(GLfloat)];
+
 	//Get normal for each vertex
-	for (int i = 0; i < sizeof(elements) / sizeof(GLfloat)/3; i++) {
+	for (int i = 0; i < sizeof(elements) / sizeof(GLfloat) / 3; i++) {
 		vec3 normal = normalizeVertex(
-			vec3(g_vertex_buffer_data[elements[i * 3] * 3], g_vertex_buffer_data[elements[i * 3] * 3 + 1], g_vertex_buffer_data[elements[i * 3] * 3 + 2]), 
+			vec3(g_vertex_buffer_data[elements[i * 3] * 3], g_vertex_buffer_data[elements[i * 3] * 3 + 1], g_vertex_buffer_data[elements[i * 3] * 3 + 2]),
 			vec3(g_vertex_buffer_data[elements[i * 3 + 1] * 3], g_vertex_buffer_data[elements[i * 3 + 1] * 3 + 1], g_vertex_buffer_data[elements[i * 3 + 1] * 3 + 2]),
 			vec3(g_vertex_buffer_data[elements[i * 3 + 2] * 3], g_vertex_buffer_data[elements[i * 3 + 2] * 3 + 1], g_vertex_buffer_data[elements[i * 3 + 2] * 3 + 2]));
 
 		for (int j = 0; j < 3; ++j) {
 			// std::cout << elements[i * 3 + j] << " " << normal.x << " " << normal.y << " " << normal.z << std::endl;
-			normals [elements[i * 3 + j] * 3] = normal.x;
-			normals [elements[i * 3 + j] * 3 + 1] = normal.y;
-			normals [elements[i * 3 + j] * 3 + 2] = normal.z;
+			normals[elements[i * 3 + j] * 3] = normal.x;
+			normals[elements[i * 3 + j] * 3 + 1] = normal.y;
+			normals[elements[i * 3 + j] * 3 + 2] = normal.z;
 		}
 	}
 
-	int wheelDataSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 3 * 2;
-	int wheelElementSize = WHEEL_TRIANGLE_AMOUNT * 3 * 2 * 2;
-	int wheelUVSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 2 * 2;
+	const int wheelDataSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 3 * 2;
+	const int wheelElementSize = WHEEL_TRIANGLE_AMOUNT * 3 * 2 * 2;
+	const int wheelUVSize = (WHEEL_TRIANGLE_AMOUNT + 1) * 2 * 2;
 
 	GLfloat rearLeftWheelData[wheelDataSize];
-	GLuint rearLeftWheelElement[wheelElementSize]; 
-	GLfloat frontLeftWheelData[wheelDataSize]; 
+	GLuint rearLeftWheelElement[wheelElementSize];
+	GLfloat frontLeftWheelData[wheelDataSize];
 	GLuint frontLeftWheelElement[wheelElementSize];
 
 	GLfloat rearRightWheelData[wheelDataSize];
-	GLuint rearRightWheelElement[wheelElementSize]; 
-	GLfloat frontRightWheelData[wheelDataSize]; 
+	GLuint rearRightWheelElement[wheelElementSize];
+	GLfloat frontRightWheelData[wheelDataSize];
 	GLuint frontRightWheelElement[wheelElementSize];
 
 	GLfloat rightWheelUV[wheelDataSize];
@@ -584,15 +675,15 @@ int main( void )
 	glGenBuffers(1, &elementbuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-	
+
 
 	// The VBO containing the 4 vertices of the particles.
 	// Thanks to instancing, they will be shared by all particles.
-	static const GLfloat rain_vertex_buffer_data[] = { 
-		 -0.5f, -0.5f, 0.0f,
-		  0.5f, -0.5f, 0.0f,
-		 -0.5f,  0.5f, 0.0f,
-		  0.5f,  0.5f, 0.0f,
+	static const GLfloat rain_vertex_buffer_data[] = {
+		-0.5f, -0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		-0.5f,  0.5f, 0.0f,
+		0.5f,  0.5f, 0.0f,
 	};
 	GLuint billboard_vertex_buffer;
 	glGenBuffers(1, &billboard_vertex_buffer);
@@ -661,23 +752,20 @@ int main( void )
 		int newparticles = (int)(delta*500.0);
 		if (newparticles > (int)(0.016f*500.0))
 			newparticles = (int)(0.016f*500.0);
-		
-		for(int i=0; i<newparticles; i++){
+
+		for (int i = 0; i<newparticles; i++) {
 			int particleIndex = FindUnusedParticle();
 			ParticlesContainer[particleIndex].life = 2.0f; // This particle will live 5 seconds.
 			ParticlesContainer[particleIndex].pos = glm::vec3((rand() % 2000 - 1000.0f) / 100.0f, 8.0f, (rand() % 2000 - 1000.0f) / 100.0f);
 
-			// float spread = 5.0f;
-			// glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
-			// // Very bad way to generate a random direction; 
-			// // See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+			// float sgror instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
 			// // combined with some user-controlled parameters (main direction, spread, etc)
 			// glm::vec3 randomdir = glm::vec3(
 			// 	(rand()%2000 - 1000.0f)/1000.0f,
 			// 	(rand()%2000 - 1000.0f)/1000.0f,
 			// 	(rand()%2000 - 1000.0f)/1000.0f
 			// );
-			
+
 			ParticlesContainer[particleIndex].speed = glm::vec3(0.0, 0.0f, 0.0);
 
 
@@ -688,42 +776,47 @@ int main( void )
 			ParticlesContainer[particleIndex].a = 255;
 
 			ParticlesContainer[particleIndex].size = 0.08f;
-			
+
 		}
 
 
 
 		// Simulate all particles
 		int ParticlesCount = 0;
-		for(int i=0; i<MaxParticles; i++){
+		for (int i = 0; i<MaxParticles; i++) {
 
 			Particle& p = ParticlesContainer[i]; // shortcut
 
-			if(p.life > 0.0f){
+			if (p.life > 0.0f) {
 
 				// Decrease life
 				p.life -= delta;
-				if (p.life > 0.0f){
+				if (p.life > 0.0f) {
 
 					// Simulate simple physics : gravity only, no collisions
-					p.speed += glm::vec3(0.0f,-9.81f, 0.0f) * (float)delta * 0.5f;
+					p.speed += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
 					p.pos += p.speed * (float)delta;
-					p.cameradistance = glm::length2( p.pos - CameraPosition );
+					p.cameradistance = glm::length2(p.pos - CameraPosition);
 					//ParticlesContainer[i].pos += glm::vec3(0.0f,10.0f, 0.0f) * (float)delta;
 
 					// Fill the GPU buffer
-					g_particule_position_size_data[4*ParticlesCount+0] = p.pos.x;
-					g_particule_position_size_data[4*ParticlesCount+1] = p.pos.y;
-					g_particule_position_size_data[4*ParticlesCount+2] = p.pos.z;
-												   
-					g_particule_position_size_data[4*ParticlesCount+3] = p.size;
-												   
-					g_particule_color_data[4*ParticlesCount+0] = p.r;
-					g_particule_color_data[4*ParticlesCount+1] = p.g;
-					g_particule_color_data[4*ParticlesCount+2] = p.b;
-					g_particule_color_data[4*ParticlesCount+3] = p.a;
+					g_particule_position_size_data[4 * ParticlesCount + 0] = p.pos.x;
+					g_particule_position_size_data[4 * ParticlesCount + 1] = p.pos.y;
+					g_particule_position_size_data[4 * ParticlesCount + 2] = p.pos.z;
 
-				}else{
+					g_particule_position_size_data[4 * ParticlesCount + 3] = p.size;
+
+					g_particule_color_data[4 * ParticlesCount + 0] = p.r;
+					g_particule_color_data[4 * ParticlesCount + 1] = p.g;
+					g_particule_color_data[4 * ParticlesCount + 2] = p.b;
+					g_particule_color_data[4 * ParticlesCount + 3] = p.a;
+					if (checkRainCollision(carAABB, p.pos)) {
+						//collision with car
+						p.life = -1;
+						//fprintf(stderr, "rain collision\n");
+					}
+				}
+				else {
 					// Particles that just died will be put at the end of the buffer in SortParticles();
 					p.cameradistance = -1.0f;
 				}
@@ -768,7 +861,7 @@ int main( void )
 
 		// Same as the billboards tutorial
 		glUniform3f(CameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
-		glUniform3f(CameraUp_worldspace_ID   , ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
+		glUniform3f(CameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
 
 		glUniformMatrix4fv(ViewProjMatrixID, 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
 
@@ -783,7 +876,7 @@ int main( void )
 			0,                  // stride
 			(void*)0            // array buffer offset
 		);
-		
+
 		// 2nd attribute buffer : positions of particles' centers
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
@@ -816,18 +909,18 @@ int main( void )
 		glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
 		glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
 
-		// Draw the particules !
-		// This draws many times a small triangle_strip (which looks like a quad).
-		// This is equivalent to :
-		// for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
-		// but faster.
+									 // Draw the particules !
+									 // This draws many times a small triangle_strip (which looks like a quad).
+									 // This is equivalent to :
+									 // for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
+									 // but faster.
 		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
 
-		
+
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
-		
+
 		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
 		glVertexAttribDivisor(1, 0); // positions : one per quad (its center)                 -> 1
 		glVertexAttribDivisor(2, 0);
@@ -837,7 +930,7 @@ int main( void )
 		// Send our transformation to the currently bound shader, 
 		// in the "MVP" uniform
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-		glUniform3fv(ViewPosID,1, &getCameraPosition()[0]);
+		glUniform3fv(ViewPosID, 1, &getCameraPosition()[0]);
 		// Bind our texture in Texture Unit 0
 		glActiveTexture(GL_TEXTURE0);
 		// Set our "myTextureSampler" sampler to use Texture Unit 0
@@ -878,17 +971,17 @@ int main( void )
 			(void*)0                          // array buffer offset
 		);
 
-		
+
 		// Draw the triangle !
 		// glDrawArrays(GL_TRIANGLES, 0, 15*3); // 12*3 indices starting at 0 -> 12 triangles
-		
+
 		glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
 
 		glBindTexture(GL_TEXTURE_2D, sideTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 30 * sizeof(GLuint), elements, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 30, GL_UNSIGNED_INT, 0);
-		
+
 		glBindTexture(GL_TEXTURE_2D, frontBumperTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 30, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -896,7 +989,7 @@ int main( void )
 		glBindTexture(GL_TEXTURE_2D, hoodTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 36, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		
+
 		glBindTexture(GL_TEXTURE_2D, windowTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 42, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -904,7 +997,7 @@ int main( void )
 		glBindTexture(GL_TEXTURE_2D, blackTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 48, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		
+
 		glBindTexture(GL_TEXTURE_2D, windowTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 54, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -912,11 +1005,11 @@ int main( void )
 		glBindTexture(GL_TEXTURE_2D, rearBumperTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 60, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-				
+
 		glBindTexture(GL_TEXTURE_2D, blackTexture);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), elements + 66, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
+		
 		GLuint vertexbuffer;
 		glGenBuffers(1, &vertexbuffer);
 
@@ -999,6 +1092,83 @@ int main( void )
 		glBufferData(GL_ARRAY_BUFFER, sizeof(leftWheelNormal), rightWheelNormal, GL_STATIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frontLeftWheelElement), rearRightWheelElement, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(frontLeftWheelElement) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+		
+		GLuint grassvertexbuffer;
+		glGenBuffers(1, &grassvertexbuffer);
+
+		GLuint grassuvbuffer;
+		glGenBuffers(1, &grassuvbuffer);
+
+		GLuint grassnormalbuffer;
+		glGenBuffers(1, &grassnormalbuffer);
+
+		GLuint grasselementbuffer;
+		glGenBuffers(1, &grasselementbuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, grasselementbuffer);
+
+		glBindBuffer(GL_ARRAY_BUFFER, grassvertexbuffer);
+		glVertexAttribPointer(
+			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, grassuvbuffer);
+		glVertexAttribPointer(
+			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			2,                                // size : U+V => 2
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, grassnormalbuffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			3,                                // size : U+V => 2
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		glBindTexture(GL_TEXTURE_2D, grassTexture);
+		glBindBuffer(GL_ARRAY_BUFFER, grassvertexbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(grass_vertex_buffer_data), grass_vertex_buffer_data, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, grassuvbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(grass_uv_buffer_data), grass_uv_buffer_data, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, grassnormalbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(grassNormals), grassNormals, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(grassElements), grassElements, GL_STATIC_DRAW);
+		glDrawElements(GL_TRIANGLES, sizeof(grassElements) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+
+		GLuint itemvertexbuffer;
+		glGenBuffers(1, &itemvertexbuffer);
+		GLuint itemelementbuffer;
+		glGenBuffers(1, &itemelementbuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, itemelementbuffer);
+
+		glBindBuffer(GL_ARRAY_BUFFER, itemvertexbuffer);
+		glVertexAttribPointer(
+			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+		glEnableVertexAttribArray(1);
+		glBindTexture(GL_TEXTURE_2D, itemTexture);
+		glBindBuffer(GL_ARRAY_BUFFER, itemvertexbuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(item_vertex_buffer_data), item_vertex_buffer_data, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(itemElements), itemElements, GL_STATIC_DRAW);
+		glDrawElements(GL_TRIANGLES, sizeof(itemElements) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
 		GLuint roadvertexbuffer;
 		glGenBuffers(1, &roadvertexbuffer);
@@ -1055,6 +1225,8 @@ int main( void )
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(roadElements), roadElements, GL_STATIC_DRAW);
 		glDrawElements(GL_TRIANGLES, sizeof(roadElements) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
+	
+
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
@@ -1067,15 +1239,34 @@ int main( void )
 			if (carSpeed < 40) {
 				carSpeed += 10;
 			}
-		} else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		}
+		else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 			if (carSpeed < 20) {
-				carSpeed += 5;	
+				carSpeed += 5;
 			}
-		} else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+			for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
+				if (i % 3 == 0) {
+					item_vertex_buffer_data[i] -= 0.02;
+				}
+			}
+			itemAABB.maxPosition.x -= 0.02;
+			itemAABB.minPosition.x -= 0.02;
+			
+			
+		}
+		else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 			if (carSpeed > -10) {
 				carSpeed -= 2.5;
 			}
-		} else  {
+			for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
+				if (i % 3 == 0) {
+					item_vertex_buffer_data[i] += 0.02;
+				}
+			}
+			itemAABB.maxPosition.x += 0.02;
+			itemAABB.minPosition.x += 0.02;
+		}
+		else {
 			if (carSpeed > 0) {
 				carSpeed -= 2.5;
 			}
@@ -1083,27 +1274,44 @@ int main( void )
 
 		if (carSpeed > 0 || carSpeed < 0) {
 			if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-				for (int i = 0; i < sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3; i++ ) {
+				for (int i = 0; i < sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3; i++) {
 					if (road_vertex_buffer_data[i * 3 + 2] < 2) {
-						road_vertex_buffer_data[i * 3 + 2] += 0.02;	
-					} else {
+						road_vertex_buffer_data[i * 3 + 2] += 0.02;
+					}
+					else {
 						break;
 					}
 				}
-			} else 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-				for (int i = sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3 - 1 ;i >= 0; i-- ) {
+			}
+			else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+				
+				for (int i = sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3 - 1; i >= 0; i--) {
 					if (road_vertex_buffer_data[i * 3 + 2] > -2.03) {
 						road_vertex_buffer_data[i * 3 + 2] -= 0.02;
-					} else {
+					}
+					else {
 						break;
+					}
+				}
+			}
+			if (checkCollision(carAABB, itemAABB)) {
+				//ada collision
+				//fprintf(stderr, "COLLISION\n");
+
+				//change item position
+				itemAABB.maxPosition.x += 2;
+				itemAABB.minPosition.x += 2;
+				for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
+					if (i % 3 == 0) {
+						item_vertex_buffer_data[i] += 2;
 					}
 				}
 			}
 		}
 
 	} // Check if the ESC key was pressed or the window was closed
-	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-		   glfwWindowShouldClose(window) == 0 );
+	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+		glfwWindowShouldClose(window) == 0);
 
 
 	delete[] g_particule_position_size_data;
@@ -1115,7 +1323,7 @@ int main( void )
 	glDeleteProgram(programID);
 	glDeleteTextures(1, &Texture);
 	glDeleteVertexArrays(1, &VertexArrayID);
-	
+
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
