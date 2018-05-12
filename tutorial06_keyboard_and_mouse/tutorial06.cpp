@@ -63,6 +63,8 @@ bool checkRainCollision(AABB obj1, vec3 point) {
 
 const int MaxParticles = 1000;
 Particle ParticlesContainer[MaxParticles];
+Particle SmokeContainer[MaxParticles];
+int smokeLastUsedParticle = 0;
 int LastUsedParticle = 0;
 
 // Finds a Particle in ParticlesContainer which isn't used yet.
@@ -86,8 +88,30 @@ int FindUnusedParticle() {
 	return 0; // All particles are taken, override the first one
 }
 
+int FindSmokeUnusedParticle() {
+		for (int i = smokeLastUsedParticle; i<MaxParticles; i++) {
+		if (SmokeContainer[i].life < 0) {
+			smokeLastUsedParticle = i;
+			return i;
+		}
+	}
+
+	for (int i = 0; i<smokeLastUsedParticle; i++) {
+		if (SmokeContainer[i].life < 0) {
+			smokeLastUsedParticle = i;
+			return i;
+		}
+	}
+
+	return 0; // All particles are taken, override the first one
+}
+
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
+}
+
+void SortSmokeParticles() {
+	std::sort(&SmokeContainer[0], &SmokeContainer[MaxParticles]);
 }
 
 vec3 normalizeVertex(vec3 v1, vec3 v2, vec3 v3) {
@@ -220,15 +244,6 @@ void rotate(GLfloat x0, GLfloat y0, GLfloat* x1, GLfloat* y1, float angle) {
 	*y1 = tempY;
 }
 
-void moveCarHorizontal(int speed) {
-	// std::cout << sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT) << std::endl;
-	// for (int i = 0; i < sizeof(g_vertex_buffer_data) / sizeof(GL_FLOAT); i++ ) {
-
-	// 	g_vertex_buffer_data[i * 3] += speed;
-	// }
-}
-
-
 int main(void)
 {
 	// Initialise GLFW
@@ -238,14 +253,13 @@ int main(void)
 		getchar();
 		return -1;
 	}
-	/*
+	
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	*/
 
 	// Open a window and create its OpenGL context
 	window = glfwCreateWindow(1024, 768, "Tutorial 18 - Particules", NULL, NULL);
@@ -276,7 +290,7 @@ int main(void)
 	glfwSetCursorPos(window, 1024 / 2, 768 / 2);
 
 	// Dark blue background
-	glClearColor(1.0f, 1.0f, 1, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
 
 	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
@@ -322,7 +336,13 @@ int main(void)
 	static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 	static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 
+	
+	static GLfloat* smoke_particule_position_size_data = new GLfloat[MaxParticles * 4];
+	static GLubyte* smoke_particule_color_data = new GLubyte[MaxParticles * 4];
+
 	for (int i = 0; i<MaxParticles; i++) {
+		SmokeContainer[i].life = -1.0f;
+		SmokeContainer[i].cameradistance = -1.0f;
 		ParticlesContainer[i].life = -1.0f;
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
@@ -530,31 +550,31 @@ int main(void)
 	};
 
 	static GLfloat road_vertex_buffer_data[] = {
-		-50.0f, -0.75f, 1.25f,
-		50.0f, -0.75f, 1.25f,
-		-50.0f, -0.75f, -1.25f,
-		50.0f, -0.75f, -1.25f
+		-1000.0f, -0.75f, 1.25f,
+		1000.0f, -0.75f, 1.25f,
+		-1000.0f, -0.75f, -1.25f,
+		1000.0f, -0.75f, -1.25f
 	};
 
 	static GLfloat grass_vertex_buffer_data[] = {
-		-50.0f, -0.8f, 5.0f,
-		50.0f, -0.8f, 5.0f,
-		-50.0f, -0.8f, -5.0f,
-		50.0f, -0.8f, -5.0f
+		-1000.0f, -0.8f, 5.0f,
+		1000.0f, -0.8f, 5.0f,
+		-1000.0f, -0.8f, -5.0f,
+		1000.0f, -0.8f, -5.0f
 	};
 
 	GLfloat road_uv_buffer_data[] = {
-		0.1, -10,
-		0.1, 10,
-		1, -10,
-		1, 10
+		0.1, -1000,
+		0.1, 1000,
+		1, -1000,
+		1, 1000
 	};
 
 	GLfloat grass_uv_buffer_data[] = {
-		0.1, -10,
-		0.1, 10,
-		1, -10,
-		1, 10
+		0.1, -1000,
+		0.1, 1000,
+		1, -1000,
+		1, 1000
 	};
 
 	GLuint roadElements[] = {
@@ -680,11 +700,20 @@ int main(void)
 	// The VBO containing the 4 vertices of the particles.
 	// Thanks to instancing, they will be shared by all particles.
 	static const GLfloat rain_vertex_buffer_data[] = {
+		-0.05f, -0.5f, 0.0f,
+		0.05f, -0.5f, 0.0f,
+		-0.05f,  0.5f, 0.0f,
+		0.05f,  0.5f, 0.0f,
+	};
+
+
+	static const GLfloat smoke_vertex_buffer_data[] = {
 		-0.5f, -0.5f, 0.0f,
 		0.5f, -0.5f, 0.0f,
 		-0.5f,  0.5f, 0.0f,
 		0.5f,  0.5f, 0.0f,
 	};
+
 	GLuint billboard_vertex_buffer;
 	glGenBuffers(1, &billboard_vertex_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
@@ -704,10 +733,31 @@ int main(void)
 	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
 	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW);
 
+	//Smoke
+	GLuint smoke_vertex_buffer;
+	glGenBuffers(1, &smoke_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, smoke_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(smoke_vertex_buffer_data), smoke_vertex_buffer_data, GL_STATIC_DRAW);
+
+	// The VBO containing the positions and sizes of the particles
+	GLuint smoke_position_buffer;
+	glGenBuffers(1, &smoke_position_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, smoke_position_buffer);
+	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+
+	// The VBO containing the colors of the particles
+	GLuint smoke_color_buffer;
+	glGenBuffers(1, &smoke_color_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, smoke_color_buffer);
+	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW);
+
 	int indexOffset = (WHEEL_TRIANGLE_AMOUNT + 1) * 2;
 	double lastTime = glfwGetTime();
 
 	float carSpeed = 10;
+	double timeSinceLastSpawn = 0;
 
 	do
 	{
@@ -727,9 +777,17 @@ int main(void)
 
 		for (int i = 0; i < 4; ++i) {
 			road_vertex_buffer_data[i * 3] -= carSpeed / 500;
+			grass_vertex_buffer_data[i * 3] -= carSpeed / 500;
 		}
 
-
+		
+		for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
+			if (i % 3 == 0) {
+				item_vertex_buffer_data[i] -= carSpeed / 500;
+			}
+		}
+		itemAABB.maxPosition.x -= carSpeed / 500;
+		itemAABB.minPosition.x -= carSpeed / 500;
 
 		computeMatricesFromInputs();
 		glm::mat4 ModelMatrix = glm::mat4(1.0);
@@ -744,187 +802,6 @@ int main(void)
 		glm::vec3 CameraPosition(glm::inverse(ViewMatrix)[3]);
 
 		glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
-
-
-		// Generate 10 new particule each millisecond,
-		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
-		// newparticles will be huge and the next frame even longer.
-		int newparticles = (int)(delta*500.0);
-		if (newparticles > (int)(0.016f*500.0))
-			newparticles = (int)(0.016f*500.0);
-
-		for (int i = 0; i<newparticles; i++) {
-			int particleIndex = FindUnusedParticle();
-			ParticlesContainer[particleIndex].life = 2.0f; // This particle will live 5 seconds.
-			ParticlesContainer[particleIndex].pos = glm::vec3((rand() % 2000 - 1000.0f) / 100.0f, 8.0f, (rand() % 2000 - 1000.0f) / 100.0f);
-
-			// float sgror instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
-			// // combined with some user-controlled parameters (main direction, spread, etc)
-			// glm::vec3 randomdir = glm::vec3(
-			// 	(rand()%2000 - 1000.0f)/1000.0f,
-			// 	(rand()%2000 - 1000.0f)/1000.0f,
-			// 	(rand()%2000 - 1000.0f)/1000.0f
-			// );
-
-			ParticlesContainer[particleIndex].speed = glm::vec3(0.0, 0.0f, 0.0);
-
-
-			// Very bad way to generate a random color
-			ParticlesContainer[particleIndex].r = 0;
-			ParticlesContainer[particleIndex].g = 0;
-			ParticlesContainer[particleIndex].b = 128;
-			ParticlesContainer[particleIndex].a = 255;
-
-			ParticlesContainer[particleIndex].size = 0.08f;
-
-		}
-
-
-
-		// Simulate all particles
-		int ParticlesCount = 0;
-		for (int i = 0; i<MaxParticles; i++) {
-
-			Particle& p = ParticlesContainer[i]; // shortcut
-
-			if (p.life > 0.0f) {
-
-				// Decrease life
-				p.life -= delta;
-				if (p.life > 0.0f) {
-
-					// Simulate simple physics : gravity only, no collisions
-					p.speed += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
-					p.pos += p.speed * (float)delta;
-					p.cameradistance = glm::length2(p.pos - CameraPosition);
-					//ParticlesContainer[i].pos += glm::vec3(0.0f,10.0f, 0.0f) * (float)delta;
-
-					// Fill the GPU buffer
-					g_particule_position_size_data[4 * ParticlesCount + 0] = p.pos.x;
-					g_particule_position_size_data[4 * ParticlesCount + 1] = p.pos.y;
-					g_particule_position_size_data[4 * ParticlesCount + 2] = p.pos.z;
-
-					g_particule_position_size_data[4 * ParticlesCount + 3] = p.size;
-
-					g_particule_color_data[4 * ParticlesCount + 0] = p.r;
-					g_particule_color_data[4 * ParticlesCount + 1] = p.g;
-					g_particule_color_data[4 * ParticlesCount + 2] = p.b;
-					g_particule_color_data[4 * ParticlesCount + 3] = p.a;
-					if (checkRainCollision(carAABB, p.pos)) {
-						//collision with car
-						p.life = -1;
-						//fprintf(stderr, "rain collision\n");
-					}
-				}
-				else {
-					// Particles that just died will be put at the end of the buffer in SortParticles();
-					p.cameradistance = -1.0f;
-				}
-
-				ParticlesCount++;
-
-			}
-		}
-
-		SortParticles();
-
-
-		//printf("%d ",ParticlesCount);
-
-
-		// Update the buffers that OpenGL uses for rendering.
-		// There are much more sophisticated means to stream data from the CPU to the GPU, 
-		// but this is outside the scope of this tutorial.
-		// http://www.opengl.org/wiki/Buffer_Object_Streaming
-
-
-		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
-		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data);
-
-		glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
-		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
-
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		// Use our shader
-		glUseProgram(programID);
-
-		// Bind our texture in Texture Unit 0
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, Texture);
-		// Set our "myTextureSampler" sampler to use Texture Unit 0
-		glUniform1i(TextureID, 0);
-
-		// Same as the billboards tutorial
-		glUniform3f(CameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
-		glUniform3f(CameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
-
-		glUniformMatrix4fv(ViewProjMatrixID, 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
-
-		// 1rst attribute buffer : vertices
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
-		glVertexAttribPointer(
-			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-			3,                  // size
-			GL_FLOAT,           // type
-			GL_FALSE,           // normalized?
-			0,                  // stride
-			(void*)0            // array buffer offset
-		);
-
-		// 2nd attribute buffer : positions of particles' centers
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
-		glVertexAttribPointer(
-			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-			4,                                // size : x + y + z + size => 4
-			GL_FLOAT,                         // type
-			GL_FALSE,                         // normalized?
-			0,                                // stride
-			(void*)0                          // array buffer offset
-		);
-
-		// 3rd attribute buffer : particles' colors
-		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
-		glVertexAttribPointer(
-			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-			4,                                // size : r + g + b + a => 4
-			GL_UNSIGNED_BYTE,                 // type
-			GL_TRUE,                          // normalized?    *** YES, this means that the unsigned char[4] will be accessible with a vec4 (floats) in the shader ***
-			0,                                // stride
-			(void*)0                          // array buffer offset
-		);
-
-		// These functions are specific to glDrawArrays*Instanced*.
-		// The first parameter is the attribute buffer we're talking about.
-		// The second parameter is the "rate at which generic vertex attributes advance when rendering multiple instances"
-		// http://www.opengl.org/sdk/docs/man/xhtml/glVertexAttribDivisor.xml
-		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
-		glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
-		glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
-
-									 // Draw the particules !
-									 // This draws many times a small triangle_strip (which looks like a quad).
-									 // This is equivalent to :
-									 // for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
-									 // but faster.
-		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
-
-
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-
-		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
-		glVertexAttribDivisor(1, 0); // positions : one per quad (its center)                 -> 1
-		glVertexAttribDivisor(2, 0);
-
 
 		glUseProgram(carID);
 		// Send our transformation to the currently bound shader, 
@@ -1231,6 +1108,314 @@ int main(void)
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
 
+		// Generate 10 new particule each millisecond,
+		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
+		// newparticles will be huge and the next frame even longer.
+		int newparticles = (int)(delta*500.0);
+		if (newparticles > (int)(0.016f*500.0))
+			newparticles = (int)(0.016f*500.0);
+
+		for (int i = 0; i<newparticles; i++) {
+			int particleIndex = FindUnusedParticle();
+			ParticlesContainer[particleIndex].life = 2.0f; // This particle will live 5 seconds.
+			ParticlesContainer[particleIndex].pos = glm::vec3((rand() % 2000 - 1000.0f) / 100.0f, 8.0f, (rand() % 2000 - 1000.0f) / 100.0f);
+
+			// float sgror instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+			// // combined with some user-controlled parameters (main direction, spread, etc)
+			// glm::vec3 randomdir = glm::vec3(
+			// 	(rand()%2000 - 1000.0f)/1000.0f,
+			// 	(rand()%2000 - 1000.0f)/1000.0f,
+			// 	(rand()%2000 - 1000.0f)/1000.0f
+			// );
+
+			ParticlesContainer[particleIndex].speed = glm::vec3(0.0, 0.0f, 0.0);
+
+
+			// Very bad way to generate a random color
+			ParticlesContainer[particleIndex].r = 255;
+			ParticlesContainer[particleIndex].g = 255;
+			ParticlesContainer[particleIndex].b = 255;
+			ParticlesContainer[particleIndex].a = 255;
+
+			ParticlesContainer[particleIndex].size = 0.08f;
+
+		}
+
+		// Simulate all particles
+		int ParticlesCount = 0;
+		for (int i = 0; i<MaxParticles; i++) {
+
+			Particle& p = ParticlesContainer[i]; // shortcut
+
+			if (p.life > 0.0f) {
+
+				// Decrease life
+				p.life -= delta;
+				if (p.life > 0.0f) {
+
+					// Simulate simple physics : gravity only, no collisions
+					p.speed += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
+					p.pos += p.speed * (float)delta;
+					p.cameradistance = glm::length2(p.pos - CameraPosition);
+					//ParticlesContainer[i].pos += glm::vec3(0.0f,10.0f, 0.0f) * (float)delta;
+
+					// Fill the GPU buffer
+					g_particule_position_size_data[4 * ParticlesCount + 0] = p.pos.x;
+					g_particule_position_size_data[4 * ParticlesCount + 1] = p.pos.y;
+					g_particule_position_size_data[4 * ParticlesCount + 2] = p.pos.z;
+
+					g_particule_position_size_data[4 * ParticlesCount + 3] = p.size;
+
+					g_particule_color_data[4 * ParticlesCount + 0] = p.r;
+					g_particule_color_data[4 * ParticlesCount + 1] = p.g;
+					g_particule_color_data[4 * ParticlesCount + 2] = p.b;
+					g_particule_color_data[4 * ParticlesCount + 3] = p.a;
+					if (checkRainCollision(carAABB, p.pos)) {
+						//collision with car
+						p.life = -1;
+						//fprintf(stderr, "rain collision\n");
+					}
+				}
+				else {
+					// Particles that just died will be put at the end of the buffer in SortParticles();
+					p.cameradistance = -1.0f;
+				}
+
+				ParticlesCount++;
+
+			}
+		}
+
+		SortParticles();
+		timeSinceLastSpawn += delta;
+		if (timeSinceLastSpawn > 0.5) {
+			int particleIndex = FindUnusedParticle();
+			SmokeContainer[particleIndex].life = 1.0f; // This particle will live 5 seconds.
+			SmokeContainer[particleIndex].pos = glm::vec3(g_vertex_buffer_data[36 * 3] - 0.05, g_vertex_buffer_data[36 * 3 + 1] + 0.05, g_vertex_buffer_data[36 * 3 + 2] + 0.15 + (rand() % 2000 - 1000.0f) / 100000.0f);
+
+			// float sgror instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+			// // combined with some user-controlled parameters (main direction, spread, etc)
+			// glm::vec3 randomdir = glm::vec3(
+			// 	(rand()%2000 - 1000.0f)/1000.0f,
+			// 	(rand()%2000 - 1000.0f)/1000.0f,
+			// 	(rand()%2000 - 1000.0f)/1000.0f
+			// );
+
+			SmokeContainer[particleIndex].speed = glm::vec3(-0.01f, 0.0f, 0.0);
+
+
+			// Very bad way to generate a random color
+			SmokeContainer[particleIndex].r = 128;
+			SmokeContainer[particleIndex].g = 128;
+			SmokeContainer[particleIndex].b = 128;
+			SmokeContainer[particleIndex].a = 255;
+
+			SmokeContainer[particleIndex].size = 0.08f;
+			timeSinceLastSpawn = 0;
+		}
+
+		// Simulate all particles
+		int SmokeParticlesCount = 0;
+		for (int i = 0; i<MaxParticles; i++) {
+
+			Particle& p = SmokeContainer[i]; // shortcut
+
+			if (p.life > 0.0f) {
+
+				// Decrease life
+				p.life -= delta;
+				if (p.life > 0.0f) {
+
+					// Simulate simple physics : gravity only, no collisions
+					p.speed += glm::vec3(-carSpeed / 50, 0.5f, 0.0f) * (float)delta * 0.5f;
+					p.pos += p.speed * (float)delta;
+					p.cameradistance = glm::length2(p.pos - CameraPosition);
+					//ParticlesContainer[i].pos += glm::vec3(0.0f,10.0f, 0.0f) * (float)delta;
+
+					// Fill the GPU buffer
+					smoke_particule_position_size_data[4 * SmokeParticlesCount + 0] = p.pos.x;
+					smoke_particule_position_size_data[4 * SmokeParticlesCount + 1] = p.pos.y;
+					smoke_particule_position_size_data[4 * SmokeParticlesCount + 2] = p.pos.z;
+
+					smoke_particule_position_size_data[4 * SmokeParticlesCount + 3] = p.size;
+	
+
+					smoke_particule_color_data[4 * SmokeParticlesCount + 0] = p.r;
+					smoke_particule_color_data[4 * SmokeParticlesCount + 1] = p.g;
+					smoke_particule_color_data[4 * SmokeParticlesCount + 2] = p.b;
+					smoke_particule_color_data[4 * SmokeParticlesCount + 3] = p.a;
+					// if (checkRainCollision(carAABB, p.pos)) {
+					// 	//collision with car
+					// 	p.life = -1;
+					// 	//fprintf(stderr, "rain collision\n");
+					// }
+				}
+				else {
+					// Particles that just died will be put at the end of the buffer in SortParticles();
+					p.cameradistance = -1.0f;
+				}
+
+				SmokeParticlesCount++;
+
+			}
+		}
+
+		SortSmokeParticles();
+
+		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data);
+
+		glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
+		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
+
+		glBindBuffer(GL_ARRAY_BUFFER, smoke_position_buffer);
+		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+		glBufferSubData(GL_ARRAY_BUFFER, 0, SmokeParticlesCount * sizeof(GLfloat) * 4, smoke_particule_position_size_data);
+
+		glBindBuffer(GL_ARRAY_BUFFER, smoke_color_buffer);
+		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+		glBufferSubData(GL_ARRAY_BUFFER, 0, SmokeParticlesCount * sizeof(GLubyte) * 4, smoke_particule_color_data);
+
+		// Use our shader
+		glUseProgram(programID);
+
+		// Bind our texture in Texture Unit 0
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Texture);
+		// Set our "myTextureSampler" sampler to use Texture Unit 0
+		glUniform1i(TextureID, 0);
+
+		// Same as the billboards tutorial
+		glUniform3f(CameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
+		glUniform3f(CameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
+
+		glUniformMatrix4fv(ViewProjMatrixID, 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
+
+		// 1rst attribute buffer : vertices
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
+		glVertexAttribPointer(
+			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+
+		// 2nd attribute buffer : positions of particles' centers
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+		glVertexAttribPointer(
+			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			4,                                // size : x + y + z + size => 4
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// 3rd attribute buffer : particles' colors
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			4,                                // size : r + g + b + a => 4
+			GL_UNSIGNED_BYTE,                 // type
+			GL_TRUE,                          // normalized?    *** YES, this means that the unsigned char[4] will be accessible with a vec4 (floats) in the shader ***
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// These functions are specific to glDrawArrays*Instanced*.
+		// The first parameter is the attribute buffer we're talking about.
+		// The second parameter is the "rate at which generic vertex attributes advance when rendering multiple instances"
+		// http://www.opengl.org/sdk/docs/man/xhtml/glVertexAttribDivisor.xml
+		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
+		glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
+		glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
+
+									 // Draw the particules !
+									 // This draws many times a small triangle_strip (which looks like a quad).
+									 // This is equivalent to :
+									 // for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
+									 // but faster.
+
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
+
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+
+
+
+		//Bind Attrib for smoke
+
+		// 1rst attribute buffer : vertices
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, smoke_vertex_buffer);
+		glVertexAttribPointer(
+			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+
+		// 2nd attribute buffer : positions of particles' centers
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, smoke_position_buffer);
+		glVertexAttribPointer(
+			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			4,                                // size : x + y + z + size => 4
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// 3rd attribute buffer : particles' colors
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, smoke_color_buffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			4,                                // size : r + g + b + a => 4
+			GL_UNSIGNED_BYTE,                 // type
+			GL_TRUE,                          // normalized?    *** YES, this means that the unsigned char[4] will be accessible with a vec4 (floats) in the shader ***
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// These functions are specific to glDrawArrays*Instanced*.
+		// The first parameter is the attribute buffer we're talking about.
+		// The second parameter is the "rate at which generic vertex attributes advance when rendering multiple instances"
+		// http://www.opengl.org/sdk/docs/man/xhtml/glVertexAttribDivisor.xml
+		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
+		glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
+		glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
+
+									 // Draw the particules !
+									 // This draws many times a small triangle_strip (which looks like a quad).
+									 // This is equivalent to :
+									 // for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
+									 // but faster.
+		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, SmokeParticlesCount);
+
+
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+
+		glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
+		glVertexAttribDivisor(1, 0); // positions : one per quad (its center)                 -> 1
+		glVertexAttribDivisor(2, 0);
+
 		// Swap buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -1244,31 +1429,17 @@ int main(void)
 			if (carSpeed < 20) {
 				carSpeed += 5;
 			}
-			for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
-				if (i % 3 == 0) {
-					item_vertex_buffer_data[i] -= 0.02;
-				}
-			}
-			itemAABB.maxPosition.x -= 0.02;
-			itemAABB.minPosition.x -= 0.02;
-			
-			
 		}
 		else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 			if (carSpeed > -10) {
 				carSpeed -= 2.5;
 			}
-			for (int i = 0; i < sizeof(item_vertex_buffer_data) / sizeof(GL_FLOAT); i++) {
-				if (i % 3 == 0) {
-					item_vertex_buffer_data[i] += 0.02;
-				}
-			}
-			itemAABB.maxPosition.x += 0.02;
-			itemAABB.minPosition.x += 0.02;
 		}
 		else {
 			if (carSpeed > 0) {
-				carSpeed -= 2.5;
+				carSpeed -= 0.25;
+			} else if (carSpeed < 0) {
+				carSpeed += 0.25;
 			}
 		}
 
@@ -1277,6 +1448,8 @@ int main(void)
 				for (int i = 0; i < sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3; i++) {
 					if (road_vertex_buffer_data[i * 3 + 2] < 2) {
 						road_vertex_buffer_data[i * 3 + 2] += 0.02;
+						item_vertex_buffer_data[i * 3 + 2] += 0.02;
+						item_vertex_buffer_data[i * 3 + 2 + 12] += 0.02;
 					}
 					else {
 						break;
@@ -1288,6 +1461,8 @@ int main(void)
 				for (int i = sizeof(road_vertex_buffer_data) / sizeof(GL_FLOAT) / 3 - 1; i >= 0; i--) {
 					if (road_vertex_buffer_data[i * 3 + 2] > -2.03) {
 						road_vertex_buffer_data[i * 3 + 2] -= 0.02;
+						item_vertex_buffer_data[i * 3 + 2] -= 0.02;
+						item_vertex_buffer_data[i * 3 + 2 + 12] -= 0.02;
 					}
 					else {
 						break;
